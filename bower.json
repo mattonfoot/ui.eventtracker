@@ -1,0 +1,25 @@
+{
+  "name": "ui.eventtracker",
+  "version": "0.0.1",
+  "homepage": "https://github.com/mattonfoot/ui.eventtracker",
+  "authors": [
+    "Matt Smith <mattonfoot@gmail.com>"
+  ],
+  "description": "A simple event delegate to handle google analytics suite event tracking",
+  "main": "dist/ui.eventtracker.js",
+  "keywords": [
+    "jquery",
+    "ga",
+    "analytics",
+    "events"
+  ],
+  "license": "MIT",
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "test",
+    "tasks",
+    "lib"
+  ]
+}
