@@ -6,7 +6,9 @@
     "Matt Smith <mattonfoot@gmail.com>"
   ],
   "description": "A simple event delegate to handle google analytics suite event tracking",
-  "main": "dist/ui.eventtracker.js",
+  "main": [
+    "./dist/**/*.*"
+  ],
   "keywords": [
     "jquery",
     "ga",
