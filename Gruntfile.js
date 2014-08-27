@@ -50,7 +50,7 @@ module.exports = function( grunt )
     grunt.registerTask('test'         , [ 'jshint:test', 'mocha:test' ]);
 
     // build
-    grunt.registerTask('build'        , [ 'jshint:src', 'copy:dist', 'uglify:dist' ]);
+    grunt.registerTask('build'        , [ 'jshint:src', 'test', 'copy:dist', 'uglify:dist' ]);
 
     // auto build
     // grunt.registerTask('default'   , [ 'watch' ]);
