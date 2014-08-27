@@ -22,7 +22,6 @@
     "bower_components",
     "test",
     "tasks",
-    "lib",
-    "*.*"
+    "lib"
   ]
 }
