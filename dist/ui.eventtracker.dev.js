@@ -14,24 +14,47 @@
         this.$element = $(element);
         this.options = options;
 
-        this.$trackingElement = this.$element;
-        if (!this.$trackingElement.is('[data-track]')) {
-            var first = this.$trackingElement.parents('[data-track]').first();
-
-            this.$trackingElement = first;
-        }
+        this.$trackingElement = this.$element.is('[data-track]') ? this.$element : this.$trackingElement.parents('[data-track]').first();
     };
 
     // private methods
 
-    function sendTrackedEvent( category, action, label, value ) {
-        if ( _gaq && typeof _gaq.push === 'function' ) {
-            sendGAEvent( category, action, label, value );
+
+
+
+    // Tracking helpers
+
+    function sendTrackedEvent( category, action, label, value, cb ) {
+        if (cb) window.setTimeout( cb, 50 );
+
+        if ( window.dataLayer && typeof window.dataLayer.push === 'function' ) {
+            return sendDataLayerEvent( category, action, label, value, cb );
         }
 
-        if ( typeof ga === 'function' ) {
-            sendUAEvent( category, action, label, value );
+        if ( window._gaq && typeof window._gaq.push === 'function' ) {
+            return sendGAEvent( category, action, label, value, cb );
         }
+
+        if ( typeof window.ga === 'function' ) {
+            return sendUAEvent( category, action, label, value, cb );
+        }
+
+        logEventToConsole( category, action, label );
+    }
+
+    function sendDataLayerEvent( category, action, label, value ) {
+      var data = {
+        event: 'GAevent',
+        eventCategory: category,
+        eventAction: action,
+        eventLabel: label
+      };
+
+      if ( value ) {
+        data['eventValue'] = value;
+      }
+
+      window.dataLayer.push( data );
     }
 
     function sendGAEvent( category, action, label, value ) {
@@ -41,16 +64,29 @@
             data.push( value );
         }
 
-        _gaq.push( data );
+        window._gaq.push( data );
     }
 
     function sendUAEvent( category, action, label, value ) {
+        var data = {
+            category: category,
+            action: action,
+            label: label
+        };
+
         if (value) {
-            ga( 'send', 'event', category, action, label, value );
-            return;
+            data.value = value;
         }
 
-        ga( 'send', 'event', category, action, label );
+        window.ga( 'send', 'event', data );
+    }
+
+    function logEventToConsole( category, action, label ) {
+        var console = window.console;
+
+        if ( console && console.log ) {
+            console.log( 'track', category, action, label );
+        }
     }
 
     function determineActualCategory( tracker, c ) {
@@ -89,66 +125,21 @@
     EventTracker.prototype = {
         constructor: EventTracker
 
-      // Category: download slide, Action: title or href, Label: current page
-      , slidedownload: function() {
-          this.download( 'slide' );
-      }
-
-      // Category: download type, Action: title or href, Label: current page
-      , download: function( dltype ) {
-          var category = 'download' + ( dltype ? ' ' + dltype : '' )
-            , action = this.$element.attr('title') || this.$element.attr('href')
-            , label = window.location.href;
-
-          this.track( category, action, label );
-      }
-
-      // Category: pagination, Action: title or href, Label: current page
-      , pagination: function() {
-          var category = 'pagination'
-            , action = this.$element.attr('rel')
-            , label = window.location.href;
-
-          this.track( category, action, label );
-      }
-
-      // Category: tophat, Action: tophat service menu opened / closed, Label: page clicked from
-      // Category: tophat, Action: tophat menu name, Label: page clicked from
-      , tophat: function() {
-          var category = 'tophat'
-            , action = this.$element.attr('title')
-            , label = window.location.href;
-
-          if (this.$element.is('.menu-item-evidence a')) {
-              var isCollapsed = this.$element.hasClass('collapsed');
-
-              action = action += isCollapsed ? ' expanded' : ' collapsed';
-          }
-
-          this.track( category, action, label );
-      }
-
-      , ajax: function( url ) {
-          var remote = (url || this.options.label).toLowerCase()
-            , isSearch = ~remote.indexOf('/search?') && ~remote.indexOf('q=')
-            , category = isSearch ? 'search results' : 'ajax request'
-            , action = 'loaded'
-            , label = url;
-
-          this.track( category, action, label );
-      }
-
-      // data attributes will overide all but the category parameter
+        // data attributes will overide all but the category parameter
       , track: function( c, a, l, v ) {
-          var ev = $.Event( 'track', {
-              category: determineActualCategory( this, c )
-            , action: this.options.action || a || (this.$trackingElement.is('form') ? 'submitted' : this.$element.attr('rel') || 'clicked')
-            , label: this.options.label || l || determineAppropriateLabel( this )
-            , value: this.options.value || v || undefined
-          });
+            var $el = this.$element;
 
-          $(document).trigger( ev );
-      }
+            var ev = $.Event( 'track', {
+                category: determineActualCategory( this, c )
+              , action: this.options.action || a || (this.$trackingElement.is('form') ? 'submitted' : this.$element.attr('rel') || 'clicked')
+              , label: this.options.label || l || determineAppropriateLabel( this )
+              , value: this.options.value || v || undefined
+            });
+
+            $(document).trigger( ev );
+
+            sendTrackedEvent( ev.category, ev.action, ev.label, ev.value, this.options.after );
+        }
 
     };
 
@@ -167,8 +158,9 @@
           if (!data) {
               $this.data('eventtracker', (data = new EventTracker(this, options)));
           }
-          if ( method && data[ method ] ) {
-              return data[ method ]();
+
+          if ( method && $.fn.trackevent.handlers[ method ] ) {
+              return $.fn.trackevent.handlers[ method ].call( data );
           }
 
           data.track( method );
@@ -180,6 +172,60 @@
       , glossary:     'a-z link'
       , navigation:   'navigation link'
       , subsection:   'navigation expandable'
+    };
+
+    $.fn.trackevent.handlers = {
+
+        // Category: download slide, Action: title or href, Label: current page
+        slidedownload: function() {
+            $.fn.trackevent.handlers.download.call( this, 'slide' );
+        }
+
+
+        // Category: download type, Action: title or href, Label: current page
+      , download: function( dltype ) {
+            var category = 'download' + ( dltype ? ' ' + dltype : '' )
+              , action = this.$element.attr('title') || this.$element.attr('href')
+              , label = window.location.href;
+
+            this.track( category, action, label );
+        }
+
+        // Category: pagination, Action: title or href, Label: current page
+      , pagination: function() {
+            var category = 'pagination'
+              , action = this.$element.attr('rel')
+              , label = window.location.href;
+
+            this.track( category, action, label );
+        }
+
+        // Category: tophat, Action: tophat service menu opened / closed, Label: page clicked from
+        // Category: tophat, Action: tophat menu name, Label: page clicked from
+      , tophat: function() {
+            var category = 'tophat'
+              , action = this.$element.attr('title')
+              , label = window.location.href;
+
+            if (this.$element.is('.menu-item-evidence a')) {
+                var isCollapsed = this.$element.hasClass('collapsed');
+
+                action = action += isCollapsed ? ' expanded' : ' collapsed';
+            }
+
+            this.track( category, action, label );
+        }
+
+      , ajax: function( url ) {
+            var remote = (url || this.options.label).toLowerCase()
+              , isSearch = ~remote.indexOf('/search?') && ~remote.indexOf('q=')
+              , category = isSearch ? 'search results' : 'ajax request'
+              , action = 'loaded'
+              , label = url;
+
+            this.track( category, action, label );
+        }
+
     };
 
 
@@ -195,23 +241,24 @@
     // events
 
     $(document)
-        .on('click.data-api.bs', 'a[data-track], button[data-track], [type="submit"][data-track], button[data-track], [data-track] a, [data-track] button, [data-track] [type="submit"]', function ( e ) {
-            var $this = $(this);
+        .on('click.data-api.bs', 'a[data-track], button[data-track], [type="submit"][data-track], [type="reset"][data-track], [type="image"][data-track], [data-track] a, [data-track] button, .tophat a', function ( e ) {
+            var $link = $(this);
 
-            if ( $this.is('.tophat a') ) {
-                $this.trackevent( 'tophat' );
+            if ( $link.is('.tophat a') ) {
+                $link.trackevent( 'tophat' );
+
                 return;
             }
 
-            $this.trackevent();
+            $link.trackevent();
         })
         .on('submit.data-api.bs', '[data-track]', function ( e ) {
-            $(this).trackevent();
+            var $form = $(this);
+
+            $form.trackevent();
         })
         .on('track.data-api.bs', function( e ) {
-
             sendTrackedEvent( e.category, e.action, e.label, e.value );
-
         })
         .ajaxSuccess(function( e, xhr, settings ) {
             $(e.target).trackevent( 'ajax', { label: settings.url });
