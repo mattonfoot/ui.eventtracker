@@ -200,22 +200,6 @@
             this.track( category, action, label );
         }
 
-        // Category: tophat, Action: tophat service menu opened / closed, Label: page clicked from
-        // Category: tophat, Action: tophat menu name, Label: page clicked from
-      , tophat: function() {
-            var category = 'tophat'
-              , action = this.$element.attr('title')
-              , label = window.location.href;
-
-            if (this.$element.is('.menu-item-evidence a')) {
-                var isCollapsed = this.$element.hasClass('collapsed');
-
-                action = action += isCollapsed ? ' expanded' : ' collapsed';
-            }
-
-            this.track( category, action, label );
-        }
-
       , ajax: function( url ) {
             var remote = (url || this.options.label).toLowerCase()
               , isSearch = ~remote.indexOf('/search?') && ~remote.indexOf('q=')
@@ -243,12 +227,6 @@
     $(document)
         .on('click.data-api.bs', 'a[data-track], button[data-track], [type="submit"][data-track], [type="reset"][data-track], [type="image"][data-track], [data-track] a, [data-track] button, .tophat a', function ( e ) {
             var $link = $(this);
-
-            if ( $link.is('.tophat a') ) {
-                $link.trackevent( 'tophat' );
-
-                return;
-            }
 
             $link.trackevent();
         })
