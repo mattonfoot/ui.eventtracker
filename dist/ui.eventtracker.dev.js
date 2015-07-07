@@ -14,7 +14,7 @@
         this.$element = $(element);
         this.options = options;
 
-        this.$trackingElement = this.$element.is('[data-track]') ? this.$element : this.$trackingElement.parents('[data-track]').first();
+        this.$trackingElement = this.$element.is('[data-track]') ? this.$element : this.$element.parents('[data-track]').first();
     };
 
     // private methods
